@@ -4,11 +4,10 @@ import os
 import time
 
 # Load OpenAI API key from environment variables
-openai_api_key = os.getenv("OPENAI_API_KEY")
+openai.api_key = os.getenv("OPENAI_API_KEY")
 
 # OpenAI functions for assistant creation and file handling
 def create_assistant(file_ids, title):
-    openai.api_key = openai_api_key
     instructions = """
     You are a helpful assistant. Use your knowledge base to answer user questions.
     """
@@ -26,43 +25,37 @@ def create_assistant(file_ids, title):
     return assistant.id, vector_store.id
 
 def save_file_openai(location):
-    openai.api_key = openai_api_key
-    file = openai.File.create(file=open(location, "rb"), purpose='assistants')
+    response = openai.File.create(file=open(location, "rb"), purpose='fine-tune')
     os.remove(location)
-    return file.id
+    return response["id"]
 
 def start_assistant_thread(prompt, vector_id):
     messages = [{"role": "user", "content": prompt}]
-    openai.api_key = openai_api_key
     tool_resources = {"file_search": {"vector_store_ids": [vector_id]}}
     thread = openai.Thread.create(messages=messages, tool_resources=tool_resources)
-    return thread.id
+    return thread["id"]
 
 def run_assistant(thread_id, assistant_id):
-    openai.api_key = openai_api_key
     run = openai.Run.create(thread_id=thread_id, assistant_id=assistant_id)
-    return run.id
+    return run["id"]
 
 def check_run_status(thread_id, run_id):
-    openai.api_key = openai_api_key
     run = openai.Run.retrieve(thread_id=thread_id, run_id=run_id)
-    return run.status
+    return run["status"]
 
 def retrieve_thread(thread_id):
-    openai.api_key = openai_api_key
-    thread_messages = openai.Thread.list_messages(thread_id)
-    list_messages = thread_messages.data
+    thread_messages = openai.Thread.list_messages(thread_id=thread_id)
+    list_messages = thread_messages["data"]
     thread_messages = []
     for message in list_messages:
         obj = {
-            'content': message['content'][0]['text']['value'],
-            'role': message['role']
+            'content': message["content"],
+            'role': message["role"]
         }
         thread_messages.append(obj)
     return thread_messages[::-1]
 
 def add_message_to_thread(thread_id, prompt):
-    openai.api_key = openai_api_key
     openai.Message.create(thread_id=thread_id, role="user", content=prompt)
 
 # Function to process the assistant run and return messages
@@ -84,7 +77,7 @@ def process_run(thread_id, assistant_id):
     return responses
 
 # Streamlit app
-st.title("🧑‍💻 Cirrina Online 💬 Assistant")
+st.title("🐙 Cirrina Online 💬 Assistant")
 st.write("My name is Cirrina, your many tentacled personal AI Assistant. I create file_search assistants, just upload your knowledge base and start chatting to your documents.")
 
 if 'assistant_initialized' not in st.session_state:

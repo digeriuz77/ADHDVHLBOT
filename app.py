@@ -41,8 +41,8 @@ def process_run(st, thread_id, assistant_id):
             st.write('Assistant Response:', message['content'])
 
 def main():
-st.title("🐙Cirrina Online 💬 Assistant")
-st.write("My name is Cirrina, your many tentacled personal AI Assistant. Please upload your knowledge base to start chatting with your documents.")
+    st.title("🐙Cirrina Online 💬 Assistant")
+    st.write("My name is Cirrina, your many tentacled personal AI Assistant. Please upload your knowledge base to start chatting with your documents.")
 
     if 'assistant_initialized' not in st.session_state:
         # Input field for the title

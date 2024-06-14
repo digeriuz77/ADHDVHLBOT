@@ -8,43 +8,44 @@ openai.api_key = os.getenv("OPENAI_API_KEY")
 
 # OpenAI functions for assistant creation and file handling
 def create_assistant(file_ids, title):
+    client = openai.OpenAI(api_key=openai.api_key)
     instructions = """
     You are a helpful assistant. Use your knowledge base to answer user questions.
     """
     model = "gpt-4-turbo"
     tools = [{"type": "file_search"}]
-    vector_store = openai.VectorStore.create(name=title, file_ids=file_ids)
-    tool_resources = {"file_search": {"vector_store_ids": [vector_store.id]}}
-    assistant = openai.Assistant.create(
+    assistant = client.beta.assistants.create(
         name=title,
         instructions=instructions,
         model=model,
         tools=tools,
-        tool_resources=tool_resources
+        tool_resources={"file_search": {"vector_store_ids": file_ids}}
     )
-    return assistant.id, vector_store.id
+    return assistant.id
 
-def save_file_openai(location):
-    response = openai.File.create(file=open(location, "rb"), purpose='fine-tune')
-    os.remove(location)
+def save_file_openai(file):
+    client = openai.OpenAI(api_key=openai.api_key)
+    response = client.beta.files.create(file=file, purpose='assistants')
     return response["id"]
 
-def start_assistant_thread(prompt, vector_id):
-    messages = [{"role": "user", "content": prompt}]
-    tool_resources = {"file_search": {"vector_store_ids": [vector_id]}}
-    thread = openai.Thread.create(messages=messages, tool_resources=tool_resources)
+def start_assistant_thread(prompt):
+    client = openai.OpenAI(api_key=openai.api_key)
+    thread = client.beta.threads.create(messages=[{"role": "user", "content": prompt}])
     return thread["id"]
 
 def run_assistant(thread_id, assistant_id):
-    run = openai.Run.create(thread_id=thread_id, assistant_id=assistant_id)
+    client = openai.OpenAI(api_key=openai.api_key)
+    run = client.beta.threads.runs.create(thread_id=thread_id, assistant_id=assistant_id)
     return run["id"]
 
 def check_run_status(thread_id, run_id):
-    run = openai.Run.retrieve(thread_id=thread_id, run_id=run_id)
+    client = openai.OpenAI(api_key=openai.api_key)
+    run = client.beta.threads.runs.retrieve(thread_id=thread_id, run_id=run_id)
     return run["status"]
 
 def retrieve_thread(thread_id):
-    thread_messages = openai.Thread.list_messages(thread_id=thread_id)
+    client = openai.OpenAI(api_key=openai.api_key)
+    thread_messages = client.beta.threads.messages.list(thread_id=thread_id)
     list_messages = thread_messages["data"]
     thread_messages = []
     for message in list_messages:
@@ -56,7 +57,8 @@ def retrieve_thread(thread_id):
     return thread_messages[::-1]
 
 def add_message_to_thread(thread_id, prompt):
-    openai.Message.create(thread_id=thread_id, role="user", content=prompt)
+    client = openai.OpenAI(api_key=openai.api_key)
+    client.beta.threads.messages.create(thread_id=thread_id, role="user", content=prompt)
 
 # Function to process the assistant run and return messages
 def process_run(thread_id, assistant_id):
@@ -77,7 +79,7 @@ def process_run(thread_id, assistant_id):
     return responses
 
 # Streamlit app
-st.title("🐙 Cirrina Online 💬 Assistant")
+st.title("🧑‍💻 Cirrina Online 💬 Assistant")
 st.write("My name is Cirrina, your many tentacled personal AI Assistant. I create file_search assistants, just upload your knowledge base and start chatting to your documents.")
 
 if 'assistant_initialized' not in st.session_state:
@@ -86,21 +88,16 @@ if 'assistant_initialized' not in st.session_state:
     uploaded_files = st.file_uploader("Upload Files for the Assistant", accept_multiple_files=True)
 
     if st.button("Initialize Assistant") and title and initiation and uploaded_files:
-        file_locations = []
+        file_ids = []
         for uploaded_file in uploaded_files:
-            bytes_data = uploaded_file.getvalue()
-            location = f"temp_file_{uploaded_file.name}"
-            with open(location, "wb") as f:
-                f.write(bytes_data)
-            file_locations.append(location)
+            file_id = save_file_openai(uploaded_file)
+            file_ids.append(file_id)
             st.success(f'File {uploaded_file.name} has been uploaded successfully.')
 
-        file_ids = [save_file_openai(location) for location in file_locations]
-        assistant_id, vector_id = create_assistant(file_ids, title)
-        thread_id = start_assistant_thread(initiation, vector_id)
+        assistant_id = create_assistant(file_ids, title)
+        thread_id = start_assistant_thread(initiation)
 
         st.session_state.assistant_id = assistant_id
-        st.session_state.vector_id = vector_id
         st.session_state.thread_id = thread_id
         st.session_state.assistant_initialized = True
         st.session_state.last_message = initiation

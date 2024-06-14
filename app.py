@@ -1,6 +1,5 @@
 import streamlit as st
 import openai
-import os
 import time
 
 # Initialize OpenAI client
@@ -8,14 +7,17 @@ st.title("🧑‍💻 Cirrina Online 💬 Assistant")
 st.write("My name is Cirrina, your many tentacled personal AI Assistant. Please upload your knowledge base to start chatting with your documents.")
 
 if 'api_key' not in st.session_state:
-    st.session_state.api_key = st.text_input("Enter your OpenAI API key", type="password")
+    st.session_state.api_key = ""
 
 if 'assistant_id' not in st.session_state:
-    st.session_state.assistant_id = st.text_input("Enter your Assistant ID")
+    st.session_state.assistant_id = ""
+
+st.session_state.api_key = st.text_input("Enter your OpenAI API key", type="password", value=st.session_state.api_key)
+st.session_state.assistant_id = st.text_input("Enter your Assistant ID", value=st.session_state.assistant_id)
 
 if st.session_state.api_key and st.session_state.assistant_id:
     openai.api_key = st.session_state.api_key
-
+    
     # File upload
     uploaded_files = st.file_uploader("Upload Files", accept_multiple_files=True)
 

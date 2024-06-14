@@ -7,10 +7,9 @@ from openai import OpenAI  # Used for interacting with OpenAI's API
 from typing_extensions import override  # Used for overriding methods in subclasses
 from openai import AssistantEventHandler  # Used for handling events related to OpenAI assistants
 
-import re # Used for regular expressions
+import re  # Used for regular expressions
 
 # Initialize OpenAI client
-
 if 'api_key' not in st.session_state:
     st.session_state.api_key = ""
 
@@ -23,7 +22,7 @@ st.session_state.assistant_id = st.text_input("Enter your Assistant ID", value=s
 if st.session_state.api_key and st.session_state.assistant_id:
     openai.api_key = st.session_state.api_key
 
-#this bit
+# Initialize OpenAI client
 client = OpenAI()
 
 # Event handler class to handle events related to streaming output from the assistant
@@ -56,17 +55,13 @@ class EventHandler(AssistantEventHandler):
 # Create an assistant using the client library.
 assistant = client.beta.assistants.create(
     model="gpt-4o",  # Specify the model to be used.
-    
     instructions=""" 
         You are a helpful assistant that answers questions about the data in your files. The data is from a variety of authors. 
         You will answer questions from the user about the data. All you will do is answer questions about the data in the files and provide related information.
         If the user asks you a question that is not related to the data in the files, you should let them know that you can only answer questions about the data.
     """,
-    
     name="File Search Demo Assistant - Stories",  # Give the assistant a name.
-    
-    tools=[{"type": "file_search"}], # Add the file search capability to the assistant.
-    
+    tools=[{"type": "file_search"}],  # Add the file search capability to the assistant.
     metadata={  # Add metadata about the assistant's capabilities.
         "can_be_used_for_file_search": "True",
         "can_hold_vector_store": "True",
@@ -87,29 +82,27 @@ from contextlib import ExitStack
 vector_store = client.beta.vector_stores.create(name="Data Exploration")
 
 # Ready the files for upload to the vector store.
-# File uploader widget
 uploaded_files = st.file_uploader("Upload Files for the Assistant", accept_multiple_files=True, key="uploader")
 file_locations = []
 
-if uploaded_files and title and initiation:
-for uploaded_file in uploaded_files:
-                
-# Read file as bytes
-bytes_data = uploaded_file.getvalue()
-location = f"temp_file_{uploaded_file.name}"
-                
-# Save each file with a unique name
-with open(location, "wb") as f:
-    f.write(bytes_data)
-    file_locations.append(location)
-    st.success(f'File {uploaded_file.name} has been uploaded successfully.')
+if uploaded_files:
+    for uploaded_file in uploaded_files:
+        # Read file as bytes
+        bytes_data = uploaded_file.getvalue()
+        location = f"temp_file_{uploaded_file.name}"
+        
+        # Save each file with a unique name
+        with open(location, "wb") as f:
+            f.write(bytes_data)
+            file_locations.append(location)
+            st.success(f'File {uploaded_file.name} has been uploaded successfully.')
 
 # Upload file and create assistant
 with st.spinner('Processing your file and setting up the assistant...'):
     file_ids = [saveFileOpenAI(location) for location in file_locations]
     assistant_id, vector_id = createAssistant(file_ids, title)
     file_paths = file_locations
-                
+
 # Using ExitStack to manage multiple context managers and ensure they are properly closed.
 with ExitStack() as stack:
     # Open each file in binary read mode and add the file stream to the list
@@ -143,13 +136,12 @@ try:
 
     # Print the assistant's tool resources to verify the attachment of the vector store
     print("\nAssistant Tool Resources:")
-    for resource, details in assistant.tool_resources:
+    for resource, details in assistant.tool_resources.items():
         print(f" - {resource}: {details}")
 
 except Exception as e:
     print(f"An error occurred while updating the assistant: {e}")
 
-    # File upload
 import streamlit as st
 import time
 from assistants_api_v2 import *
@@ -175,15 +167,14 @@ def process_run(st, thread_id, assistant_id):
 
 def main():
     st.title("🐙Cirrina Online 💬 Assistant")
-    st.write("My name is Cirrina, your many tentacled personal AI Assistant. Please upload your knowledge base to start chatting with your documents.")
+    st.write("My name is Cirrina, your many-tentacled personal AI Assistant. Please upload your knowledge base to start chatting with your documents.")
 
     if 'assistant_initialized' not in st.session_state:
         # Input field for the title
         title = st.text_input("Enter the title", key="title")
         initiation = st.text_input("Enter the assistant's first question", key="initiation")
 
-    
-
+        if title and initiation:
             # Start the Thread
             thread_id = startAssistantThread(initiation, vector_id)
 
@@ -211,6 +202,3 @@ def main():
 
 if __name__ == "__main__":
     main()
-
-
-else:

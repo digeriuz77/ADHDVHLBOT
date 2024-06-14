@@ -19,37 +19,39 @@ else:
     openai.api_key = st.session_state.api_key
 
 if openai.api_key:
+    client = openai.OpenAI(api_key=openai.api_key)
+
     # OpenAI functions for file handling and interacting with the assistant
     def save_file_openai(file):
-        response = openai.File.create(file=file, purpose='answers')
-        return response["id"]
+        response = client.files.create(file=file, purpose='answers')
+        return response['id']
 
     def start_assistant_thread(prompt):
-        response = openai.Thread.create(messages=[{"role": "user", "content": prompt}])
-        return response["id"]
+        response = client.threads.create(messages=[{"role": "user", "content": prompt}])
+        return response['id']
 
     def run_assistant(thread_id, assistant_id):
-        response = openai.Thread.run(thread_id=thread_id, assistant_id=assistant_id)
-        return response["id"]
+        response = client.threads.runs.create(thread_id=thread_id, assistant_id=assistant_id)
+        return response['id']
 
     def check_run_status(thread_id, run_id):
-        response = openai.Thread.run_retrieve(thread_id=thread_id, run_id=run_id)
-        return response["status"]
+        response = client.threads.runs.retrieve(thread_id=thread_id, run_id=run_id)
+        return response['status']
 
     def retrieve_thread(thread_id):
-        response = openai.Thread.messages_list(thread_id=thread_id)
-        list_messages = response["data"]
+        response = client.threads.messages.list(thread_id=thread_id)
+        list_messages = response['data']
         thread_messages = []
         for message in list_messages:
             obj = {
-                'content': message["content"],
-                'role': message["role"]
+                'content': message['content'],
+                'role': message['role']
             }
             thread_messages.append(obj)
         return thread_messages[::-1]
 
     def add_message_to_thread(thread_id, prompt):
-        openai.Thread.messages_create(thread_id=thread_id, role="user", content=prompt)
+        client.threads.messages.create(thread_id=thread_id, role="user", content=prompt)
 
     # Function to process the assistant run and return messages
     def process_run(thread_id, assistant_id):

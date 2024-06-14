@@ -21,24 +21,24 @@ else:
 if openai.api_key:
     # OpenAI functions for file handling and interacting with the assistant
     def save_file_openai(file):
-        response = openai.File.create(file=file, purpose='assistants')
+        response = openai.File.create(file=file, purpose='answers')
         return response["id"]
 
     def start_assistant_thread(prompt):
-        thread = openai.Thread.create(messages=[{"role": "user", "content": prompt}])
-        return thread["id"]
+        response = openai.Thread.create(messages=[{"role": "user", "content": prompt}])
+        return response["id"]
 
     def run_assistant(thread_id, assistant_id):
-        run = openai.Thread.run(thread_id=thread_id, assistant_id=assistant_id)
-        return run["id"]
+        response = openai.Thread.run(thread_id=thread_id, assistant_id=assistant_id)
+        return response["id"]
 
     def check_run_status(thread_id, run_id):
-        run = openai.Thread.run_retrieve(thread_id=thread_id, run_id=run_id)
-        return run["status"]
+        response = openai.Thread.run_retrieve(thread_id=thread_id, run_id=run_id)
+        return response["status"]
 
     def retrieve_thread(thread_id):
-        thread_messages = openai.Thread.messages_list(thread_id=thread_id)
-        list_messages = thread_messages["data"]
+        response = openai.Thread.messages_list(thread_id=thread_id)
+        list_messages = response["data"]
         thread_messages = []
         for message in list_messages:
             obj = {

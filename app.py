@@ -91,23 +91,25 @@ vector_store = client.beta.vector_stores.create(name="Data Exploration")
 uploaded_files = st.file_uploader("Upload Files for the Assistant", accept_multiple_files=True, key="uploader")
 file_locations = []
 
-        if uploaded_files and title and initiation:
-            for uploaded_file in uploaded_files:
-                # Read file as bytes
-                bytes_data = uploaded_file.getvalue()
-                location = f"temp_file_{uploaded_file.name}"
-                # Save each file with a unique name
-                with open(location, "wb") as f:
-                    f.write(bytes_data)
-                file_locations.append(location)
-                st.success(f'File {uploaded_file.name} has been uploaded successfully.')
+if uploaded_files and title and initiation:
+for uploaded_file in uploaded_files:
+                
+# Read file as bytes
+bytes_data = uploaded_file.getvalue()
+location = f"temp_file_{uploaded_file.name}"
+                
+# Save each file with a unique name
+with open(location, "wb") as f:
+    f.write(bytes_data)
+    file_locations.append(location)
+    st.success(f'File {uploaded_file.name} has been uploaded successfully.')
 
-            # Upload file and create assistant
-            with st.spinner('Processing your file and setting up the assistant...'):
-                file_ids = [saveFileOpenAI(location) for location in file_locations]
-                assistant_id, vector_id = createAssistant(file_ids, title)
-                file_paths = file_locations
-
+# Upload file and create assistant
+with st.spinner('Processing your file and setting up the assistant...'):
+    file_ids = [saveFileOpenAI(location) for location in file_locations]
+    assistant_id, vector_id = createAssistant(file_ids, title)
+    file_paths = file_locations
+                
 # Using ExitStack to manage multiple context managers and ensure they are properly closed.
 with ExitStack() as stack:
     # Open each file in binary read mode and add the file stream to the list

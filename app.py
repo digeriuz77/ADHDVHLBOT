@@ -88,8 +88,8 @@ vector_store = client.beta.vector_stores.create(name="Data Exploration")
 
 # Ready the files for upload to the vector store.
 # File uploader widget
-        uploaded_files = st.file_uploader("Upload Files for the Assistant", accept_multiple_files=True, key="uploader")
-        file_locations = []
+uploaded_files = st.file_uploader("Upload Files for the Assistant", accept_multiple_files=True, key="uploader")
+file_locations = []
 
         if uploaded_files and title and initiation:
             for uploaded_file in uploaded_files:

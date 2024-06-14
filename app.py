@@ -1,107 +1,53 @@
 import streamlit as st
-import openai
-import time
+from openai import OpenAI
 
-# Streamlit app
-st.title("🧑‍💻 Cirrina Online 💬 Assistant")
-st.write("My name is Cirrina, your many tentacled personal AI Assistant. Please provide your assistant ID and upload your knowledge base to start chatting with your documents.")
-
-# Input for OpenAI API key
+# Initialize OpenAI client
 if 'api_key' not in st.session_state:
-    st.session_state.api_key = ''
-
-if st.session_state.api_key == '':
     st.session_state.api_key = st.text_input("Enter your OpenAI API key", type="password")
-    if st.button("Save API key"):
-        openai.api_key = st.session_state.api_key
-        st.success("API key saved!")
-else:
-    openai.api_key = st.session_state.api_key
 
-if openai.api_key:
-    client = openai.OpenAI(api_key=openai.api_key)
+if 'assistant_id' not in st.session_state:
+    st.session_state.assistant_id = st.text_input("Enter your Assistant ID")
 
-    # OpenAI functions for file handling and interacting with the assistant
+if st.session_state.api_key and st.session_state.assistant_id:
+    client = OpenAI(api_key=st.session_state.api_key)
+    
+    st.title("🧑‍💻 Cirrina Online 💬 Assistant")
+    st.write("My name is Cirrina, your many tentacled personal AI Assistant. Please upload your knowledge base to start chatting with your documents.")
+
+    # File upload
+    uploaded_files = st.file_uploader("Upload Files", accept_multiple_files=True)
+
     def save_file_openai(file):
-        response = client.files.create(file=file, purpose='answers')
-        return response['id']
+        response = client.files.create(file=file, purpose='assistants')
+        return response["id"]
 
-    def start_assistant_thread(prompt):
-        response = client.threads.create(messages=[{"role": "user", "content": prompt}])
-        return response['id']
+    if uploaded_files:
+        file_ids = []
+        for uploaded_file in uploaded_files:
+            file_id = save_file_openai(uploaded_file)
+            file_ids.append(file_id)
+            st.success(f'File {uploaded_file.name} has been uploaded with ID {file_id}')
+        
+        def create_thread_and_run(user_input):
+            thread = client.threads.create()
+            message = client.threads.messages.create(thread_id=thread.id, role="user", content=user_input)
+            run = client.threads.runs.create(thread_id=thread.id, assistant_id=st.session_state.assistant_id)
+            return thread, run
 
-    def run_assistant(thread_id, assistant_id):
-        response = client.threads.runs.create(thread_id=thread_id, assistant_id=assistant_id)
-        return response['id']
+        # Start a conversation with the assistant
+        initiation = st.text_input("Start the conversation with an initial prompt")
+        if st.button("Start Conversation"):
+            if initiation:
+                thread, run = create_thread_and_run(initiation)
+                st.write(f"Conversation started. Thread ID: {thread.id}")
 
-    def check_run_status(thread_id, run_id):
-        response = client.threads.runs.retrieve(thread_id=thread_id, run_id=run_id)
-        return response['status']
-
-    def retrieve_thread(thread_id):
-        response = client.threads.messages.list(thread_id=thread_id)
-        list_messages = response['data']
-        thread_messages = []
-        for message in list_messages:
-            obj = {
-                'content': message['content'],
-                'role': message['role']
-            }
-            thread_messages.append(obj)
-        return thread_messages[::-1]
-
-    def add_message_to_thread(thread_id, prompt):
-        client.threads.messages.create(thread_id=thread_id, role="user", content=prompt)
-
-    # Function to process the assistant run and return messages
-    def process_run(thread_id, assistant_id):
-        run_id = run_assistant(thread_id, assistant_id)
-        status = 'running'
-
-        while status != 'completed':
-            time.sleep(20)
-            status = check_run_status(thread_id, run_id)
-
-        thread_messages = retrieve_thread(thread_id)
-        responses = []
-        for message in thread_messages:
-            if message['role'] == 'user':
-                responses.append(('User', message['content']))
+                # Fetch and display the assistant's response
+                time.sleep(2)  # wait for the assistant to process
+                messages = client.threads.messages.list(thread_id=thread.id, order="asc")
+                for message in messages["data"]:
+                    st.write(f"{message['role']}: {message['content'][0]['text']['value']}")
             else:
-                responses.append(('Assistant', message['content']))
-        return responses
-
-    # Add input for existing assistant ID
-    if 'assistant_initialized' not in st.session_state:
-        assistant_id = st.text_input("Enter an existing assistant ID")
-        initiation = st.text_input("Enter the assistant's first question")
-        uploaded_files = st.file_uploader("Upload Files for the Assistant", accept_multiple_files=True)
-
-        if st.button("Initialize Assistant") and assistant_id and initiation and uploaded_files:
-            file_ids = []
-            for uploaded_file in uploaded_files:
-                file_id = save_file_openai(uploaded_file)
-                file_ids.append(file_id)
-                st.success(f'File {uploaded_file.name} has been uploaded successfully.')
-
-            thread_id = start_assistant_thread(initiation)
-
-            st.session_state.assistant_id = assistant_id
-            st.session_state.thread_id = thread_id
-            st.session_state.assistant_initialized = True
-            st.session_state.last_message = initiation
-
-            st.write("Assistant initialized successfully!")
-
-    if 'assistant_initialized' in st.session_state and st.session_state.assistant_initialized:
-        follow_up = st.text_input("Enter your follow-up question")
-
-        if st.button("Submit Follow-up") and follow_up and follow_up != st.session_state.last_message:
-            st.session_state.last_message = follow_up
-            add_message_to_thread(st.session_state.thread_id, follow_up)
-            responses = process_run(st.session_state.thread_id, st.session_state.assistant_id)
-            for role, content in responses:
-                st.write(f"{role}: {content}")
+                st.error("Please enter an initial prompt to start the conversation.")
 
 else:
-    st.warning("Please enter your OpenAI API key to proceed.")
+    st.error("Please enter both your OpenAI API key and Assistant ID to proceed.")

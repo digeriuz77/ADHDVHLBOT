@@ -1,5 +1,6 @@
 import streamlit as st
-from openai import OpenAI
+import openai
+import time
 
 # Initialize OpenAI client
 if 'api_key' not in st.session_state:
@@ -9,7 +10,7 @@ if 'assistant_id' not in st.session_state:
     st.session_state.assistant_id = st.text_input("Enter your Assistant ID")
 
 if st.session_state.api_key and st.session_state.assistant_id:
-    client = OpenAI(api_key=st.session_state.api_key)
+    openai.api_key = st.session_state.api_key
     
     st.title("🧑‍💻 Cirrina Online 💬 Assistant")
     st.write("My name is Cirrina, your many tentacled personal AI Assistant. Please upload your knowledge base to start chatting with your documents.")
@@ -18,7 +19,7 @@ if st.session_state.api_key and st.session_state.assistant_id:
     uploaded_files = st.file_uploader("Upload Files", accept_multiple_files=True)
 
     def save_file_openai(file):
-        response = client.files.create(file=file, purpose='assistants')
+        response = openai.File.create(file=openai.File(file.read(), filename=file.name), purpose='fine-tune')
         return response["id"]
 
     if uploaded_files:
@@ -29,23 +30,26 @@ if st.session_state.api_key and st.session_state.assistant_id:
             st.success(f'File {uploaded_file.name} has been uploaded with ID {file_id}')
         
         def create_thread_and_run(user_input):
-            thread = client.threads.create()
-            message = client.threads.messages.create(thread_id=thread.id, role="user", content=user_input)
-            run = client.threads.runs.create(thread_id=thread.id, assistant_id=st.session_state.assistant_id)
-            return thread, run
+            # Create a chat completion
+            response = openai.ChatCompletion.create(
+                model="gpt-4",  # or the specific model you are using
+                messages=[
+                    {"role": "system", "content": "You are a helpful assistant."},
+                    {"role": "user", "content": user_input}
+                ]
+            )
+            return response
 
         # Start a conversation with the assistant
         initiation = st.text_input("Start the conversation with an initial prompt")
         if st.button("Start Conversation"):
             if initiation:
-                thread, run = create_thread_and_run(initiation)
-                st.write(f"Conversation started. Thread ID: {thread.id}")
+                response = create_thread_and_run(initiation)
+                st.write(f"Conversation started. Assistant's response:")
 
-                # Fetch and display the assistant's response
-                time.sleep(2)  # wait for the assistant to process
-                messages = client.threads.messages.list(thread_id=thread.id, order="asc")
-                for message in messages["data"]:
-                    st.write(f"{message['role']}: {message['content'][0]['text']['value']}")
+                # Display the assistant's response
+                for message in response['choices']:
+                    st.write(f"Assistant: {message['message']['content']}")
             else:
                 st.error("Please enter an initial prompt to start the conversation.")
 
